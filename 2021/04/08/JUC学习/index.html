@@ -1,0 +1,691 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="包子君"><meta name="copyright" content="包子君"><meta name="generator" content="Hexo 5.2.0"><meta name="theme" content="hexo-theme-yun"><title>JUC并发学习笔记 | 包子君的小站</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="/favicon.ico"><link rel="mask-icon" href="/favicon.ico" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="/css/hexo-theme-yun.css"><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"sfafreshman.github.io","root":"/","title":"包子君的小站","version":"1.2.0","mode":"dark","copycode":true,"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"https://v1.hitokoto.cn","hitokoto":true},"fireworks":{"colors":["102, 167, 221","62, 131, 225","33, 78, 194"]}};
+  </script><meta name="description" content="JUC   采用源码+文档方式学习  什么是JUC   java.util工具包     并发:多线程操作操作一个资源   cpu一核,模拟多条线程   并行:多个人一起走   CPU多核,多个线程同时运行   Wait和sleep1、来自不同的类wait -&gt;Object  sleep -&gt; Thread2、关于锁的释放wait会释放锁，sleep睡觉了，抱着锁睡觉，不会释放 3、使">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JUC并发学习笔记">
+<meta property="og:url" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/index.html">
+<meta property="og:site_name" content="包子君的小站">
+<meta property="og:description" content="JUC   采用源码+文档方式学习  什么是JUC   java.util工具包     并发:多线程操作操作一个资源   cpu一核,模拟多条线程   并行:多个人一起走   CPU多核,多个线程同时运行   Wait和sleep1、来自不同的类wait -&gt;Object  sleep -&gt; Thread2、关于锁的释放wait会释放锁，sleep睡觉了，抱着锁睡觉，不会释放 3、使">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210322170332.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210330212342.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210330212403.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210330212424.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210330214037.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323151912.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323151944.png">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/01_20210325150248.png?v=1&type=image&token=V1:8HEaAjBtXmTIvprHJ7YSw1om8WE1nF9vrzOwwCSIJw8">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/02_20210325150257.png?v=1&type=image&token=V1:bQD8d945Z777r5xwEbmNVNoJMKc3tqpOOogHR_5od-o">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/03_20210325150330.png?v=1&type=image&token=V1:gpwseHVrgAL5RKm_0c2-yMuJRc7vJccqH1R98cDNaJI">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/04_20210325150340.png?v=1&type=image&token=V1:5RHrJAF1fsp4VFh1zIjp-PdUB-pnFfZT3ERcqZyW67o">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/05_20210325150348.png?v=1&type=image&token=V1:_D7GTafOz3trfRN0aCyOy8aIRv7BxYY_LGwzyCRbBvg">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/06_20210325150356.png?v=1&type=image&token=V1:fSWbriyf80g3GqY-bUR_Q0Y4HwtfV47WVTE7p3mOeZE">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/07_20210325150407.png?v=1&type=image&token=V1:fsWIsw_fCC9UkhX28Fyu8PmYv5VbujnnyJ0oiWCw8t8">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/08_20210325150417.png?v=1&type=image&token=V1:kGqW0DrYgT4PF3gTUbg-Etl2WipuUsC4JyEdKrzKpcA">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/09_20210325150425.png?v=1&type=image&token=V1:T_9z9K9Wj3sZr8xQ_Fg4818LkU6NDn46NWbXDRK0e6E">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/10_20210325150435.png?v=1&type=image&token=V1:sYs64Wqv1V6-Hw2pZHVXftibLBH_yytdeCr_8eoHuQE">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/10_20210325150444.png?v=1&type=image&token=V1:elZuMttx19IJGRFHxB_PhFoAe5Iv-LQbgnHlWkuFrW8">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/11_20210325150506.png?v=1&type=image&token=V1:lqJVF59Kpo5GeUeAzeowYSQoUe7DyB3zSN3oTUTzsY0">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/12_20210325150515.png?v=1&type=image&token=V1:YLvkwlFgsseRDarnJc4ZODiQx6bfCpb2nRv_iRcNBKg">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/13_20210325150524.png?v=1&type=image&token=V1:mC0S6cOo7mRCKvY5fd0Npgc-ZJLCHA59psB2L_wTZqw">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/14_20210325150533.png?v=1&type=image&token=V1:-1DXkutrjaCNDNOix5P-jmVi6fAq5Au-n1VUDqZG5Os">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/15_20210325150542.png?v=1&type=image&token=V1:E_ZzLxZoW0PoD9y4DVHajyuBVArL9jnC6FTN5ohMo6U">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/16_20210325150550.png?v=1&type=image&token=V1:wUq3fM9Dfr_AS0C0hUx5yEea7eZQPxuRI2wuKj8S5F4">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/17_20210325150600.png?v=1&type=image&token=V1:dySM0LHdejxhlv_UmEpBeGjfOlJkfyDCq66YmftZDQw">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/18_20210325150608.png?v=1&type=image&token=V1:fjetujmUR3gP1peHXiX86gdo6yyAg4yJDhpKGwwkmxM">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/19_20210325150616.png?v=1&type=image&token=V1:Y9cQig7yytkhQ_HCIHOCCM_vG2FPj1RUrOewccb3x64">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/19_20210325150622.png?v=1&type=image&token=V1:HtYkcgipjqRojL2wYf0eA0M-MJz76etv2VS3it-dHq4">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/20_20210325150628.png?v=1&type=image&token=V1:YrgACay29Q1Gam8Z0wSg9eohoIZA2OrDZdK85QU2hOA">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/21_20210325150635.png?v=1&type=image&token=V1:z0fZy0MQeHiVJ7yuCPlIkt35QPsKUXGphXEwwIjnNmY">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/22_20210325150641.png?v=1&type=image&token=V1:sANnjjRAGW1D6jVWxukwxyJpntA18_qQUGEqZ01Qe2U">
+<meta property="og:image" content="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/JUC_md_files/23_20210325150647.png?v=1&type=image&token=V1:SUi-uwu7yPzW_YxlgfoBmAuCpWlE3MFMDxWbA9g8dtw">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323154333.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323160253.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323160508.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323160621.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323160733.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324210652.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211031.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211618.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211142.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211902.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211944.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324213529.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324213831.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324214022.png">
+<meta property="og:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324214145.png">
+<meta property="og:image" content="c:/Users/Lenovo/AppData/Roaming/Typora/typora-user-images/image-20210324220212708.png">
+<meta property="og:image" content="c:/Users/Lenovo/AppData/Roaming/Typora/typora-user-images/image-20210324220422410.png">
+<meta property="og:image" content="c:/Users/Lenovo/AppData/Roaming/Typora/typora-user-images/image-20210324220914187.png">
+<meta property="article:published_time" content="2021-04-08T20:19:08.000Z">
+<meta property="article:modified_time" content="2021-04-29T17:37:28.845Z">
+<meta property="article:author" content="包子君">
+<meta property="article:tag" content="java">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210322170332.png"><script src="/js/ui/mode.js"></script></head><body><script defer src="https://cdn.jsdelivr.net/npm/animejs@latest/anime.min.js"></script><script defer src="/js/ui/fireworks.js"></script><canvas class="fireworks"></canvas><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="包子君"><img width="96" loading="lazy" src="/images/logo.png" alt="包子君"><span class="site-author-status" title="不想上学">😭</span></a><div class="site-author-name"><a href="/about/">包子君</a></div><a class="site-name" href="/about/site.html">包子君的小站</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">13</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">7</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">13</span></a></div><a class="site-state-item hty-icon-button" href="https://sfafreshman.github.io/categories/%E5%88%86%E4%BA%AB/" title="拜读"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="mailto:sfa_freshman@qq.com" title="E-Mail" target="_blank" style="color:#8E71C1"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-mail-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="/images/qrcode.jpg" title="微信" target="_blank" style="color:#1AAD19"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-wechat-2-line"></use></svg></a></div><hr style="margin:0.5rem 1rem"><div class="links"><a class="links-item hty-icon-button" href="/links/" title="我的小伙伴们" style="color:dodgerblue"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-genderless-line"></use></svg></a></div></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Wait%E5%92%8Csleep"><span class="toc-number">1.</span> <span class="toc-text">Wait和sleep</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%94%81"><span class="toc-number">2.</span> <span class="toc-text">锁</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BC%A0%E7%BB%9F-Synchronized%E9%94%81"><span class="toc-number">2.1.</span> <span class="toc-text">传统 Synchronized锁</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Lock%E9%94%81"><span class="toc-number">2.2.</span> <span class="toc-text">Lock锁</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%9F%E4%BA%A7%E8%80%85%E5%92%8C%E6%B6%88%E8%B4%B9%E8%80%85%E9%97%AE%E9%A2%98"><span class="toc-number">3.</span> <span class="toc-text">生产者和消费者问题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#lock%E5%AE%9E%E7%8E%B0"><span class="toc-number">3.1.</span> <span class="toc-text">lock实现</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8%E9%94%81%E9%97%AE%E9%A2%98"><span class="toc-number">4.</span> <span class="toc-text">8锁问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Callable"><span class="toc-number">5.</span> <span class="toc-text">Callable</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E7%9A%84%E8%BE%85%E5%8A%A9%E7%B1%BB-%E5%BF%85%E4%BC%9A"><span class="toc-number">6.</span> <span class="toc-text">常用的辅助类(必会)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#CountDownLatch"><span class="toc-number">6.1.</span> <span class="toc-text">CountDownLatch</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#CyclicBarrier"><span class="toc-number">6.2.</span> <span class="toc-text">CyclicBarrier</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Semaphore"><span class="toc-number">6.3.</span> <span class="toc-text">Semaphore</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%BB%E5%86%99%E9%94%81"><span class="toc-number">7.</span> <span class="toc-text">读写锁</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%BB%E5%A1%9E%E9%98%9F%E5%88%97"><span class="toc-number">8.</span> <span class="toc-text">阻塞队列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BA%BF%E7%A8%8B%E6%B1%A0-%E9%87%8D%E7%82%B9"><span class="toc-number">9.</span> <span class="toc-text">线程池(重点)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-%E5%9B%9B%E5%A4%A7%E5%87%BD%E6%95%B0%E5%BC%8F%E6%8E%A5%E5%8F%A3"><span class="toc-number">10.</span> <span class="toc-text">12:四大函数式接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Stream%E6%B5%81%E5%BC%8F%E8%AE%A1%E7%AE%97"><span class="toc-number">11.</span> <span class="toc-text">Stream流式计算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#14-ForkJoin"><span class="toc-number">12.</span> <span class="toc-text">14:ForkJoin</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#15-%E5%BC%82%E6%AD%A5%E5%9B%9E%E8%B0%83"><span class="toc-number">13.</span> <span class="toc-text">15:异步回调</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#16-JMM"><span class="toc-number">14.</span> <span class="toc-text">16:JMM</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#17-Volatile%E5%8F%AF%E8%A7%81%E6%80%A7%E5%8F%8A%E5%85%B6%E9%9D%9E%E5%8E%9F%E5%AD%90%E6%80%A7%E9%AA%8C%E8%AF%81"><span class="toc-number">15.</span> <span class="toc-text">17:Volatile可见性及其非原子性验证</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E5%8E%9F%E5%AD%90%E7%B1%BB%E8%A7%A3%E5%86%B3%E5%8E%9F%E5%AD%90%E6%80%A7%E9%97%AE%E9%A2%98"><span class="toc-number">15.1.</span> <span class="toc-text">使用原子类解决原子性问题</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8C%87%E4%BB%A4%E9%87%8D%E6%8E%92"><span class="toc-number">16.</span> <span class="toc-text">指令重排</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#DCL%E6%87%92%E6%B1%89%E5%BC%8F%E5%B0%B1%E4%BD%BF%E7%94%A8%E4%BA%86volatile"><span class="toc-number">17.</span> <span class="toc-text">DCL懒汉式就使用了volatile</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%9A%E4%B8%BE"><span class="toc-number">18.</span> <span class="toc-text">枚举:</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#CAS"><span class="toc-number">19.</span> <span class="toc-text">CAS</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ABA%E9%97%AE%E9%A2%98"><span class="toc-number">20.</span> <span class="toc-text">ABA问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E5%AD%90%E5%BC%95%E7%94%A8"><span class="toc-number">21.</span> <span class="toc-text">原子引用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%AD%A4%E5%A4%84%E9%9C%80%E8%A6%81%E6%95%B2%E4%BB%A3%E7%A0%81-%E8%BF%98%E6%9C%89%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F%E8%BF%99%E4%BA%9B"><span class="toc-number">22.</span> <span class="toc-text">此处需要敲代码,还有单例模式这些</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#21-%E5%AF%B9%E5%90%84%E7%A7%8D%E9%94%81%E7%9A%84%E7%90%86%E8%A7%A3"><span class="toc-number">23.</span> <span class="toc-text">21:对各种锁的理解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%85%AC%E5%B9%B3%E9%94%81-%E9%9D%9E%E5%85%AC%E5%B9%B3%E9%94%81"><span class="toc-number">23.1.</span> <span class="toc-text">公平锁,非公平锁</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%AF%E9%87%8D%E5%85%A5%E9%94%81-%E9%80%92%E5%BD%92%E9%94%81"><span class="toc-number">23.2.</span> <span class="toc-text">可重入锁&#x2F;递归锁</span></a></li></ol></li></ol></div></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="https://sfafreshman.github.io/2021/04/08/JUC%E5%AD%A6%E4%B9%A0/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="包子君"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="包子君的小站"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">JUC并发学习笔记</h1><div class="post-meta"><div class="post-time" style="display:inline-block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <time title="创建时间：2021-04-08 20:19:08" itemprop="dateCreated datePublished" datetime="2021-04-08T20:19:08+00:00">2021-04-08</time><span class="post-meta-divider">-</span><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-2-line"></use></svg></span> <time title="修改时间：2021-04-29 17:37:28" itemprop="dateModified" datetime="2021-04-29T17:37:28+00:00">2021-04-29</time></div><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/%E7%AC%94%E8%AE%B0/" style="--text-color:dimgray" itemprop="url" rel="index"><span itemprop="text">笔记</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/java/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">java</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><p>JUC</p>
+<blockquote>
+<p> 采用源码+文档方式学习</p>
+</blockquote>
+<p>什么是JUC</p>
+<blockquote>
+<p> java.util工具包</p>
+</blockquote>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210322170332.png" alt="image-20210322170330290" loading="lazy"></p>
+<blockquote>
+<p> 并发:多线程操作操作一个资源</p>
+</blockquote>
+<ul>
+<li><p>cpu一核,模拟多条线程</p>
+<blockquote>
+<p> 并行:多个人一起走</p>
+</blockquote>
+</li>
+<li><p>CPU多核,多个线程同时运行</p>
+</li>
+</ul>
+<h3 id="Wait和sleep"><a href="#Wait和sleep" class="headerlink" title="Wait和sleep"></a>Wait和sleep</h3><p>1、来自不同的类<br>wait -&gt;Object</p>
+<p> sleep -&gt; Thread<br>2、关于锁的释放<br>wait会释放锁，sleep睡觉了，抱着锁睡觉，不会释放</p>
+<p>3、使用的范国是不同的</p>
+<ul>
+<li><p><code>wait必须在同步代码块中</code></p>
+</li>
+<li><p>sleep可以再任何地方睡</p>
+</li>
+</ul>
+<p>4、是否需要捕获异常<br>Wait不需要捕获异常</p>
+<p>//现在也需要了</p>
+<p>sleep必须要捕获异常?</p>
+<h3 id="锁"><a href="#锁" class="headerlink" title="锁"></a>锁</h3><h4 id="传统-Synchronized锁"><a href="#传统-Synchronized锁" class="headerlink" title="传统 Synchronized锁"></a>传统 Synchronized锁</h4><blockquote>
+<p>线程就是一个单独的资源类,没有任何附属的操作</p>
+<p>资源类OOP</p>
+<p>多线程操作同一个资源类,把资源类丢入线程</p>
+</blockquote>
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token comment">// 资源类 OOP</span>
+<span class="token keyword">class</span> <span class="token class-name">Ticket</span> <span class="token punctuation">&#123;</span>
+        <span class="token comment">// 属性、方法</span>
+        <span class="token keyword">private</span> <span class="token keyword">int</span> number <span class="token operator">=</span> <span class="token number">30</span><span class="token punctuation">;</span>
+        <span class="token comment">// 卖票的方式</span>
+        <span class="token comment">// synchronized 本质: 队列，锁</span>
+        <span class="token keyword">public</span> <span class="token keyword">synchronized</span> <span class="token keyword">void</span> <span class="token function">sale</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>number<span class="token operator">></span><span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+            <span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"卖出了"</span><span class="token operator">+</span><span class="token punctuation">(</span>number<span class="token operator">-</span> <span class="token operator">-</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"票,剩余："</span><span class="token operator">+</span>number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+        	<span class="token punctuation">&#125;</span>
+  <span class="token punctuation">&#125;</span></code></pre>
+
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token keyword">import</span> <span class="token namespace">java<span class="token punctuation">.</span>time<span class="token punctuation">.</span></span><span class="token class-name">OffsetDateTime</span><span class="token punctuation">;</span><span class="token class-name">Lock</span> 接口
+<span class="token comment">/**
+* 真正的多线程开发，公司中的开发，降低耦合性
+* 线程就是一个单独的资源类，没有任何附属的操作！
+* 1、 属性、方法
+*/</span>
+<span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">SaleTicketDemo01</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token class-name">String</span><span class="token punctuation">[</span><span class="token punctuation">]</span> args<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token comment">// 并发：多线程操作同一个资源类, 把资源类丢入线程</span>
+<span class="token class-name">Ticket</span> ticket <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Ticket</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// @FunctionalInterface 函数式接口，jdk1.8 lambda表达式 (参数)->&#123; 代码 &#125;</span>
+        <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span>
+            <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> <span class="token number">40</span> <span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+            	ticket<span class="token punctuation">.</span><span class="token function">sale</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token punctuation">&#125;</span>
+        <span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token string">"A"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token comment">//同上创建名称为B,C的线程并start</span>
+    <span class="token comment">//--------------省略的另外两个线程</span>
+        <span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+
+<span class="token punctuation">&#125;</span></code></pre>
+
+<h4 id="Lock锁"><a href="#Lock锁" class="headerlink" title="Lock锁"></a>Lock锁</h4><p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210330212342.png" alt="image-20210330212342160" loading="lazy"></p>
+<p><code>实现类</code></p>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210330212403.png" alt="image-20210330212403217" loading="lazy"></p>
+<blockquote>
+<p> 默认为非公平锁</p>
+</blockquote>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210330212424.png" alt="image-20210330212423864" loading="lazy"></p>
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token comment">// Lock三部曲</span>
+<span class="token comment">// 1、 new ReentrantLock();</span>
+<span class="token comment">// 2、 lock.lock(); // 加锁</span>
+<span class="token comment">// 3、 finally=> lock.unlock(); // 解锁</span>
+<span class="token keyword">class</span> <span class="token class-name">Ticket2</span> <span class="token punctuation">&#123;</span>
+<span class="token comment">// 属性、方法</span>
+            <span class="token keyword">private</span> <span class="token keyword">int</span> number <span class="token operator">=</span> <span class="token number">30</span><span class="token punctuation">;</span>
+            <span class="token class-name">Lock</span> lock <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">ReentrantLock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">sale</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+                    lock<span class="token punctuation">.</span><span class="token function">lock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 加锁</span>
+                    <span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+                    <span class="token comment">// 业务代码</span>
+                    <span class="token keyword">if</span> <span class="token punctuation">(</span>number<span class="token operator">></span><span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+                    	<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"卖出了"</span><span class="token operator">+</span><span class="token punctuation">(</span>number<span class="token operator">--</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"票,剩余："</span><span class="token operator">+</span>number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+                    	<span class="token punctuation">&#125;</span>
+                    <span class="token punctuation">&#125;</span> 
+                <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">Exception</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+                   		 e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+                    <span class="token punctuation">&#125;</span> <span class="token keyword">finally</span> <span class="token punctuation">&#123;</span>
+                  		  lock<span class="token punctuation">.</span><span class="token function">unlock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 解锁</span>
+              <span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span></code></pre>
+
+<ul>
+<li>操作代码</li>
+</ul>
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token comment">//公平锁：十分不公平：可以插队 （默认）</span>
+<span class="token keyword">import</span> <span class="token namespace">java<span class="token punctuation">.</span>util<span class="token punctuation">.</span>concurrent<span class="token punctuation">.</span>locks<span class="token punctuation">.</span></span><span class="token class-name">ReentrantLock</span><span class="token punctuation">;</span>
+<span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">SaleTicketDemo02</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token class-name">String</span><span class="token punctuation">[</span><span class="token punctuation">]</span> args<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token comment">// 并发：多线程操作同一个资源类, 把资源类丢入线程</span>
+        <span class="token class-name">Ticket2</span> ticket <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Ticket2</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token comment">// @FunctionalInterface 函数式接口，jdk1.8 lambda表达式 (参数)->&#123; 代码 &#125;</span>
+        <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span><span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> <span class="token number">40</span> <span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span>
+      		  ticket<span class="token punctuation">.</span><span class="token function">sale</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token string">"A"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span><span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> <span class="token number">40</span> <span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span>
+       		 ticket<span class="token punctuation">.</span><span class="token function">sale</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token string">"B"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span><span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> <span class="token number">40</span> <span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span>
+       		 ticket<span class="token punctuation">.</span><span class="token function">sale</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token string">"C"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">&#125;</span></code></pre>
+
+
+
+<blockquote>
+<blockquote>
+<p>Synchronized 和 Lock 区别<br>1、Synchronized 内置的Java关键字， Lock 是一个Java类<br>2、Synchronized 无法判断获取锁的状态，Lock 可以判断是否获取到了锁<br>3、Synchronized 会自动释放锁，lock 必须要手动释放锁！如果不释放锁，死锁<br>4、Synchronized 线程 1（获得锁，阻塞）、线程2（等待，傻傻的等）；Lock锁就不一定会等待下<br>去；可以设置等待超时?<br>5、Synchronized 可重入锁，不可以中断的，非公平；Lock ，可重入锁，可以 判断锁，非公平（可以<br>自己设置）；<br>6、Synchronized 适合锁少量的代码同步问题，Lock 适合锁大量的同步代码！<br>锁是什么，如何判断锁的是谁！<br>4、生产者和消费者问题<br>面试的：单例模式、排序算法、生产者和消费者、死锁</p>
+</blockquote>
+</blockquote>
+<h3 id="生产者和消费者问题"><a href="#生产者和消费者问题" class="headerlink" title="生产者和消费者问题"></a>生产者和消费者问题</h3><p><code>判断要使用if,不能使用while</code>:见多线程笔记</p>
+<h4 id="lock实现"><a href="#lock实现" class="headerlink" title="lock实现"></a>lock实现</h4><blockquote>
+<p>并发资源类</p>
+</blockquote>
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token comment">// 判断等待，业务，通知</span>
+<span class="token keyword">class</span> <span class="token class-name">Data2</span><span class="token punctuation">&#123;</span> <span class="token comment">// 数字 资源类</span>
+<span class="token keyword">private</span> <span class="token keyword">int</span> number <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+<span class="token class-name">Lock</span> lock <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">ReentrantLock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">Condition</span> condition <span class="token operator">=</span> lock<span class="token punctuation">.</span><span class="token function">newCondition</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">//condition.await(); // 等待</span>
+<span class="token comment">//condition.signalAll(); // 唤醒全部</span>
+<span class="token comment">//+1</span>
+<span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">increment</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">throws</span> <span class="token class-name">InterruptedException</span> <span class="token punctuation">&#123;</span>
+        lock<span class="token punctuation">.</span><span class="token function">lock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+        <span class="token comment">// 业务代码</span>
+        <span class="token keyword">while</span> <span class="token punctuation">(</span>number<span class="token operator">!=</span><span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">&#123;</span> <span class="token comment">//0</span>
+        <span class="token comment">// 等待</span>
+        condition<span class="token punctuation">.</span><span class="token function">await</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+	number<span class="token operator">++</span><span class="token punctuation">;</span>
+	<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"=>"</span><span class="token operator">+</span>number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// 通知其他线程，我+1完毕了</span>
+	condition<span class="token punctuation">.</span><span class="token function">signalAll</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span> 
+    <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">Exception</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+	e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span> <span class="token keyword">finally</span> <span class="token punctuation">&#123;</span>
+l	ock<span class="token punctuation">.</span><span class="token function">unlock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token comment">//-1</span>
+<span class="token keyword">public</span> <span class="token keyword">synchronized</span> <span class="token keyword">void</span> <span class="token function">decrement</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword">throws</span> <span class="token class-name">InterruptedException</span> <span class="token punctuation">&#123;</span>
+        lock<span class="token punctuation">.</span><span class="token function">lock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+       		 <span class="token keyword">while</span> <span class="token punctuation">(</span>number<span class="token operator">==</span><span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">&#123;</span> <span class="token comment">// 1</span>
+        <span class="token comment">// 等待</span>
+       		 condition<span class="token punctuation">.</span><span class="token function">await</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">&#125;</span>
+        number<span class="token operator">--</span><span class="token punctuation">;</span>
+        <span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"=>"</span><span class="token operator">+</span>number<span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token comment">// 通知其他线程，我-1完毕了</span>
+        condition<span class="token punctuation">.</span><span class="token function">signalAll</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">&#125;</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">Exception</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+       		 e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">&#125;</span> <span class="token keyword">finally</span> <span class="token punctuation">&#123;</span>
+      		  lock<span class="token punctuation">.</span><span class="token function">unlock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token punctuation">&#125;</span>
+        <span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span></code></pre>
+
+<blockquote>
+<p>并发访问</p>
+</blockquote>
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token keyword">package</span> <span class="token namespace">com<span class="token punctuation">.</span>kuang<span class="token punctuation">.</span>pc</span><span class="token punctuation">;</span>
+<span class="token keyword">import</span> <span class="token namespace">java<span class="token punctuation">.</span>util<span class="token punctuation">.</span>concurrent<span class="token punctuation">.</span>locks<span class="token punctuation">.</span></span><span class="token class-name">Condition</span><span class="token punctuation">;</span>
+<span class="token keyword">import</span> <span class="token namespace">java<span class="token punctuation">.</span>util<span class="token punctuation">.</span>concurrent<span class="token punctuation">.</span>locks<span class="token punctuation">.</span></span><span class="token class-name">Lock</span><span class="token punctuation">;</span>
+<span class="token keyword">import</span> <span class="token namespace">java<span class="token punctuation">.</span>util<span class="token punctuation">.</span>concurrent<span class="token punctuation">.</span>locks<span class="token punctuation">.</span></span><span class="token class-name">ReentrantLock</span><span class="token punctuation">;</span>
+<span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">B</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token class-name">String</span><span class="token punctuation">[</span><span class="token punctuation">]</span> args<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span><span class="token class-name">Data2</span> data <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Data2</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span>
+                <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> <span class="token number">10</span><span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+                <span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+                    data<span class="token punctuation">.</span><span class="token function">increment</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+                <span class="token punctuation">&#125;</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">InterruptedException</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+                    e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+                <span class="token punctuation">&#125;</span>
+        <span class="token punctuation">&#125;</span>
+        <span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token string">"A"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span>
+            <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> <span class="token number">10</span><span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+            <span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+           			 data<span class="token punctuation">.</span><span class="token function">decrement</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token punctuation">&#125;</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">InterruptedException</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+           		 e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+           	 <span class="token punctuation">&#125;</span>
+            <span class="token punctuation">&#125;</span>
+            <span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token string">"B"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span>
+            <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> <span class="token number">10</span><span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+            <span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+           			 data<span class="token punctuation">.</span><span class="token function">increment</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token punctuation">&#125;</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">InterruptedException</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+            		e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token punctuation">&#125;</span>
+            <span class="token punctuation">&#125;</span>
+            <span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token string">"C"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span>
+            <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> <span class="token number">10</span><span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+            <span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+            data<span class="token punctuation">.</span><span class="token function">decrement</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token punctuation">&#125;</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">InterruptedException</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+            e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token punctuation">&#125;</span>
+            <span class="token punctuation">&#125;</span>
+            <span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token string">"D"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span></code></pre>
+
+<p>任何一个新的技术，绝对不是仅仅只是覆盖了原来的技术，优势和补充！</p>
+<blockquote>
+<p>Condition 精准的通知和唤醒线程</p>
+<p><code>condition1.await();</code></p>
+<p><code>condition2.signal();</code></p>
+</blockquote>
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">printA</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+lock<span class="token punctuation">.</span><span class="token function">lock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+<span class="token comment">// 业务，判断-> 执行-> 通知</span>
+<span class="token keyword">while</span> <span class="token punctuation">(</span>number<span class="token operator">!=</span><span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+<span class="token comment">// 等待</span>
+condition1<span class="token punctuation">.</span><span class="token function">await</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"=>AAAAAAA"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// 唤醒，唤醒指定的人，B</span>
+number <span class="token operator">=</span> <span class="token number">2</span><span class="token punctuation">;</span>
+condition2<span class="token punctuation">.</span><span class="token function">signal</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">Exception</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span> <span class="token keyword">finally</span> <span class="token punctuation">&#123;</span>
+lock<span class="token punctuation">.</span><span class="token function">unlock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span></code></pre>
+
+<h3 id="8锁问题"><a href="#8锁问题" class="headerlink" title="8锁问题"></a>8锁问题</h3><blockquote>
+<p>如何判断锁的是谁！永远的知道什么锁，锁到底锁的是谁！</p>
+</blockquote>
+<h3 id="Callable"><a href="#Callable" class="headerlink" title="Callable"></a>Callable</h3><p>1、可以有返回值 </p>
+<p>2、可以抛出异常 </p>
+<p>3、方法不同，run()/ call()</p>
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token class-name">Integer</span> <span class="token function">call</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token string">"call()"</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 会打印几个call</span>
+<span class="token comment">// 耗时的操作</span>
+<span class="token keyword">return</span> <span class="token number">1024</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span></code></pre>
+
+
+
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">CallableTest</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token class-name">String</span><span class="token punctuation">[</span><span class="token punctuation">]</span> args<span class="token punctuation">)</span> <span class="token keyword">throws</span> <span class="token class-name">ExecutionException</span><span class="token punctuation">,</span>
+<span class="token class-name">InterruptedException</span> <span class="token punctuation">&#123;</span>
+<span class="token comment">// new Thread(new Runnable()).start();</span>
+<span class="token comment">// new Thread(new FutureTask&lt;V>()).start();</span>
+<span class="token comment">// new Thread(new FutureTask&lt;V>( Callable )).start();</span>
+<span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 怎么启动Callable</span>
+<span class="token class-name">MyThread</span> thread <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">MyThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">FutureTask</span> futureTask <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">FutureTask</span><span class="token punctuation">(</span>thread<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 适配类</span>
+<span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span>futureTask<span class="token punctuation">,</span><span class="token string">"A"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span>futureTask<span class="token punctuation">,</span><span class="token string">"B"</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 结果会被缓存，效率高</span>
+<span class="token class-name">Integer</span> o <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token class-name">Integer</span><span class="token punctuation">)</span> futureTask<span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">//这个get 方法可能会产生阻塞！把他放到</span>
+最后
+<span class="token comment">// 或者使用异步通信来处理！</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span>o<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token keyword">class</span> <span class="token class-name">MyThread</span> <span class="token keyword">implements</span> <span class="token class-name">Callable</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">Integer</span><span class="token punctuation">></span></span> <span class="token punctuation">&#123;</span>
+<span class="token annotation punctuation">@Override</span>
+<span class="token keyword">public</span> <span class="token class-name">Integer</span> <span class="token function">call</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token string">"call()"</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 会打印几个call</span>
+<span class="token comment">// 耗时的操作</span>
+<span class="token keyword">return</span> <span class="token number">1024</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span><span class="token punctuation">&#125;</span></code></pre>
+
+<blockquote>
+<p>1、有缓存 2、结果可能需要等待，会阻塞！</p>
+</blockquote>
+<h3 id="常用的辅助类-必会"><a href="#常用的辅助类-必会" class="headerlink" title="常用的辅助类(必会)"></a>常用的辅助类(必会)</h3><h4 id="CountDownLatch"><a href="#CountDownLatch" class="headerlink" title="CountDownLatch"></a>CountDownLatch</h4><pre class="language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">CountDownLatchDemo</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token class-name">String</span><span class="token punctuation">[</span><span class="token punctuation">]</span> args<span class="token punctuation">)</span> <span class="token keyword">throws</span> <span class="token class-name">InterruptedException</span> <span class="token punctuation">&#123;</span>
+<span class="token comment">// 总数是6，必须要执行任务的时候，再使用！</span>
+<span class="token class-name">CountDownLatch</span> countDownLatch <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">CountDownLatch</span><span class="token punctuation">(</span><span class="token number">6</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span> i <span class="token operator">&lt;=</span><span class="token number">6</span> <span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">" Go out"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+countDownLatch<span class="token punctuation">.</span><span class="token function">countDown</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 数量-1</span>
+<span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token class-name">String</span><span class="token punctuation">.</span><span class="token function">valueOf</span><span class="token punctuation">(</span>i<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+countDownLatch<span class="token punctuation">.</span><span class="token function">await</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 等待计数器归零，然后再向下执行</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token string">"Close Door"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span></code></pre>
+
+<p><code>countDownLatch.countDown();</code> // 数量-1</p>
+<p><code>countDownLatch.await();</code></p>
+<p> // 等待计数器归零，然后再向下执行 每次有线程调用 countDown() 数量-1，假设计数器变为0，countDownLatch.await() 就会被唤醒，继续 执行！</p>
+<h4 id="CyclicBarrier"><a href="#CyclicBarrier" class="headerlink" title="CyclicBarrier"></a>CyclicBarrier</h4><blockquote>
+<blockquote>
+<p>加法计数器</p>
+</blockquote>
+</blockquote>
+<h4 id="Semaphore"><a href="#Semaphore" class="headerlink" title="Semaphore"></a>Semaphore</h4><blockquote>
+<p>  信号量</p>
+<p> semaphore.acquire() 获得，假设如果已经满了，等待，等待被释放为止<br> semaphore.release(); 释放，会将当前的信号量释放 + 1，然后唤醒等待的线程！ 作用： 多个共享资源互斥的使用！并发限流，控制最大的线程数！</p>
+</blockquote>
+<pre class="language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">SemaphoreDemo</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token class-name">String</span><span class="token punctuation">[</span><span class="token punctuation">]</span> args<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token comment">// 线程数量：停车位! 限流！</span>
+<span class="token class-name">Semaphore</span> semaphore <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Semaphore</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span> i <span class="token operator">&lt;=</span><span class="token number">6</span> <span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span>
+<span class="token comment">// acquire() 得到</span>
+<span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+semaphore<span class="token punctuation">.</span><span class="token function">acquire</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span>"抢到车
+位"<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">TimeUnit</span><span class="token punctuation">.</span>SECONDS<span class="token punctuation">.</span><span class="token function">sleep</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span>"离开车
+位"<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">InterruptedException</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span> <span class="token keyword">finally</span> <span class="token punctuation">&#123;</span>
+semaphore<span class="token punctuation">.</span><span class="token function">release</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// release() 释放</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token class-name">String</span><span class="token punctuation">.</span><span class="token function">valueOf</span><span class="token punctuation">(</span>i<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span></code></pre>
+
+<h3 id="读写锁"><a href="#读写锁" class="headerlink" title="读写锁"></a>读写锁</h3><pre class="language-java" data-language="java"><code class="language-java"><span class="token comment">/**
+* 独占锁（写锁） 一次只能被一个线程占有
+* 共享锁（读锁） 多个线程可以同时占有
+* ReadWriteLock
+* 读-读 可以共存！
+* 读-写 不能共存！
+* 写-写 不能共存！
+*/</span>
+<span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">ReadWriteLockDemo</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token class-name">String</span><span class="token punctuation">[</span><span class="token punctuation">]</span> args<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token class-name">MyCache</span> myCache <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">MyCache</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// 写入</span>
+<span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span> i <span class="token operator">&lt;=</span> <span class="token number">5</span> <span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">final</span> <span class="token keyword">int</span> temp <span class="token operator">=</span> i<span class="token punctuation">;</span>
+<span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span>myCache<span class="token punctuation">.</span><span class="token function">put</span><span class="token punctuation">(</span>temp<span class="token operator">+</span><span class="token string">""</span><span class="token punctuation">,</span>temp<span class="token operator">+</span><span class="token string">""</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token class-name">String</span><span class="token punctuation">.</span><span class="token function">valueOf</span><span class="token punctuation">(</span>i<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token comment">// 读取</span>
+<span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span> i <span class="token operator">&lt;=</span> <span class="token number">5</span> <span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+<span class="token keyword">final</span> <span class="token keyword">int</span> temp <span class="token operator">=</span> i<span class="token punctuation">;</span>
+<span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token punctuation">&#123;</span>
+myCache<span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span>temp<span class="token operator">+</span><span class="token string">""</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span><span class="token punctuation">,</span><span class="token class-name">String</span><span class="token punctuation">.</span><span class="token function">valueOf</span><span class="token punctuation">(</span>i<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token comment">// 加锁的</span>
+<span class="token keyword">class</span> <span class="token class-name">MyCacheLock</span><span class="token punctuation">&#123;</span>
+<span class="token keyword">private</span> <span class="token keyword">volatile</span> <span class="token class-name">Map</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">String</span><span class="token punctuation">,</span><span class="token class-name">Object</span><span class="token punctuation">></span></span> map <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">HashMap</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token punctuation">></span></span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// 读写锁： 更加细粒度的控制</span>
+<span class="token keyword">private</span> <span class="token class-name">ReadWriteLock</span> readWriteLock <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">ReentrantReadWriteLock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token keyword">private</span> <span class="token class-name">Lock</span> lock <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">ReentrantLock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// 存，写入的时候，只希望同时只有一个线程写</span>
+<span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">put</span><span class="token punctuation">(</span><span class="token class-name">String</span> key<span class="token punctuation">,</span><span class="token class-name">Object</span> value<span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+readWriteLock<span class="token punctuation">.</span><span class="token function">writeLock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">lock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"写入"</span><span class="token operator">+</span>key<span class="token punctuation">)</span><span class="token punctuation">;</span>
+map<span class="token punctuation">.</span><span class="token function">put</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"写入OK"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">Exception</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span> <span class="token keyword">finally</span> <span class="token punctuation">&#123;</span>
+readWriteLock<span class="token punctuation">.</span><span class="token function">writeLock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">unlock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token comment">// 取，读，所有人都可以读！</span>
+<span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">get</span><span class="token punctuation">(</span><span class="token class-name">String</span> key<span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+readWriteLock<span class="token punctuation">.</span><span class="token function">readLock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">lock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"读取"</span><span class="token operator">+</span>key<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">Object</span> o <span class="token operator">=</span> map<span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"读取OK"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">Exception</span> e<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+e<span class="token punctuation">.</span><span class="token function">printStackTrace</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span> <span class="token keyword">finally</span> <span class="token punctuation">&#123;</span>
+readWriteLock<span class="token punctuation">.</span><span class="token function">readLock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">unlock</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token comment">/**
+* 自定义缓存
+*/</span>
+<span class="token keyword">class</span> <span class="token class-name">MyCache</span><span class="token punctuation">&#123;</span>
+<span class="token keyword">private</span> <span class="token keyword">volatile</span> <span class="token class-name">Map</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">String</span><span class="token punctuation">,</span><span class="token class-name">Object</span><span class="token punctuation">></span></span> map <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">HashMap</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token punctuation">></span></span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><span class="token number">10</span>、阻塞队列
+阻塞队列：
+<span class="token comment">// 存，写</span>
+<span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">put</span><span class="token punctuation">(</span><span class="token class-name">String</span> key<span class="token punctuation">,</span><span class="token class-name">Object</span> value<span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"写入"</span><span class="token operator">+</span>key<span class="token punctuation">)</span><span class="token punctuation">;</span>
+map<span class="token punctuation">.</span><span class="token function">put</span><span class="token punctuation">(</span>key<span class="token punctuation">,</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"写入OK"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token comment">// 取，读</span>
+<span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">get</span><span class="token punctuation">(</span><span class="token class-name">String</span> key<span class="token punctuation">)</span><span class="token punctuation">&#123;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"读取"</span><span class="token operator">+</span>key<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">Object</span> o <span class="token operator">=</span> map<span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span>key<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span><span class="token function">currentThread</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">+</span><span class="token string">"读取OK"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span></code></pre>
+
+<h3 id="阻塞队列"><a href="#阻塞队列" class="headerlink" title="阻塞队列"></a>阻塞队列</h3><p>什么情况下我们会使用 阻塞队列：多线程并发处理，线程池！ 学会使用队列 添加、移除 </p>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210330214037.png" alt="image-20210330214037634" loading="lazy"></p>
+<h3 id="线程池-重点"><a href="#线程池-重点" class="headerlink" title="线程池(重点)"></a>线程池(重点)</h3><p><code>线程池：三大方法、7大参数、4种拒绝策略</code></p>
+<blockquote>
+<blockquote>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323151912.png" alt="image-20210323151912115" loading="lazy"></p>
+</blockquote>
+</blockquote>
+<blockquote>
+<blockquote>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323151944.png" alt="image-20210323151944753" loading="lazy"></p>
+<p><img src="JUC_md_files/01_20210325150248.png?v=1&type=image&token=V1:8HEaAjBtXmTIvprHJ7YSw1om8WE1nF9vrzOwwCSIJw8" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/02_20210325150257.png?v=1&type=image&token=V1:bQD8d945Z777r5xwEbmNVNoJMKc3tqpOOogHR_5od-o" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/03_20210325150330.png?v=1&type=image&token=V1:gpwseHVrgAL5RKm_0c2-yMuJRc7vJccqH1R98cDNaJI" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/04_20210325150340.png?v=1&type=image&token=V1:5RHrJAF1fsp4VFh1zIjp-PdUB-pnFfZT3ERcqZyW67o" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/05_20210325150348.png?v=1&type=image&token=V1:_D7GTafOz3trfRN0aCyOy8aIRv7BxYY_LGwzyCRbBvg" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/06_20210325150356.png?v=1&type=image&token=V1:fSWbriyf80g3GqY-bUR_Q0Y4HwtfV47WVTE7p3mOeZE" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/07_20210325150407.png?v=1&type=image&token=V1:fsWIsw_fCC9UkhX28Fyu8PmYv5VbujnnyJ0oiWCw8t8" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/08_20210325150417.png?v=1&type=image&token=V1:kGqW0DrYgT4PF3gTUbg-Etl2WipuUsC4JyEdKrzKpcA" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/09_20210325150425.png?v=1&type=image&token=V1:T_9z9K9Wj3sZr8xQ_Fg4818LkU6NDn46NWbXDRK0e6E" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/10_20210325150435.png?v=1&type=image&token=V1:sYs64Wqv1V6-Hw2pZHVXftibLBH_yytdeCr_8eoHuQE" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/10_20210325150444.png?v=1&type=image&token=V1:elZuMttx19IJGRFHxB_PhFoAe5Iv-LQbgnHlWkuFrW8" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/11_20210325150506.png?v=1&type=image&token=V1:lqJVF59Kpo5GeUeAzeowYSQoUe7DyB3zSN3oTUTzsY0" alt="输入图片描述" loading="lazy"><br><img src="JUC_md_files/12_20210325150515.png?v=1&type=image&token=V1:YLvkwlFgsseRDarnJc4ZODiQx6bfCpb2nRv_iRcNBKg" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/13_20210325150524.png?v=1&type=image&token=V1:mC0S6cOo7mRCKvY5fd0Npgc-ZJLCHA59psB2L_wTZqw" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/14_20210325150533.png?v=1&type=image&token=V1:-1DXkutrjaCNDNOix5P-jmVi6fAq5Au-n1VUDqZG5Os" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/15_20210325150542.png?v=1&type=image&token=V1:E_ZzLxZoW0PoD9y4DVHajyuBVArL9jnC6FTN5ohMo6U" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/16_20210325150550.png?v=1&type=image&token=V1:wUq3fM9Dfr_AS0C0hUx5yEea7eZQPxuRI2wuKj8S5F4" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/17_20210325150600.png?v=1&type=image&token=V1:dySM0LHdejxhlv_UmEpBeGjfOlJkfyDCq66YmftZDQw" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/18_20210325150608.png?v=1&type=image&token=V1:fjetujmUR3gP1peHXiX86gdo6yyAg4yJDhpKGwwkmxM" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/19_20210325150616.png?v=1&type=image&token=V1:Y9cQig7yytkhQ_HCIHOCCM_vG2FPj1RUrOewccb3x64" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/19_20210325150622.png?v=1&type=image&token=V1:HtYkcgipjqRojL2wYf0eA0M-MJz76etv2VS3it-dHq4" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/20_20210325150628.png?v=1&type=image&token=V1:YrgACay29Q1Gam8Z0wSg9eohoIZA2OrDZdK85QU2hOA" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/21_20210325150635.png?v=1&type=image&token=V1:z0fZy0MQeHiVJ7yuCPlIkt35QPsKUXGphXEwwIjnNmY" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/22_20210325150641.png?v=1&type=image&token=V1:sANnjjRAGW1D6jVWxukwxyJpntA18_qQUGEqZ01Qe2U" alt="输入图片描述" loading="lazy"><img src="JUC_md_files/23_20210325150647.png?v=1&type=image&token=V1:SUi-uwu7yPzW_YxlgfoBmAuCpWlE3MFMDxWbA9g8dtw" alt="输入图片描述" loading="lazy"></p>
+</blockquote>
+</blockquote>
+<h3 id="12-四大函数式接口"><a href="#12-四大函数式接口" class="headerlink" title="12:四大函数式接口"></a>12:四大函数式接口</h3><p>lamdba表达式,函数式接口,链式编程,Stream流</p>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323154333.png" alt="image-20210323154333067" loading="lazy"></p>
+<ul>
+<li><p>Function接口:入参分别为参数类型和返回值类型</p>
+</li>
+<li><p>断定型接口,一个输入参数,返回值只能是布尔值</p>
+</li>
+<li><p>消费型接口,生产者接口</p>
+</li>
+<li><p>消费型接口:只有输入,没有返回值</p>
+</li>
+<li><p>生产者接口,没有输入只有返回值</p>
+</li>
+<li><blockquote>
+<blockquote>
+<p>函数式接口都可以用lambda接口简化</p>
+</blockquote>
+</blockquote>
+</li>
+<li><blockquote>
+<blockquote>
+<p>泛型,枚举,反射,传统程序员常用</p>
+</blockquote>
+</blockquote>
+</li>
+</ul>
+<h3 id="Stream流式计算"><a href="#Stream流式计算" class="headerlink" title="Stream流式计算"></a>Stream流式计算</h3><p><code>操作:存储+计算</code></p>
+<ul>
+<li><p>存储:集合,mysql</p>
+</li>
+<li><p>计算都应该交给流来操作</p>
+</li>
+</ul>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323160253.png" alt="image-20210323160253580" loading="lazy"></p>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323160508.png" alt="image-20210323160507757" loading="lazy">10</p>
+<ul>
+<li>打印传入的参数</li>
+</ul>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323160621.png" alt="image-20210323160621019" loading="lazy"></p>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210323160733.png" alt="image-20210323160733487" loading="lazy"></p>
+<ul>
+<li>每个方法返回this就能链式</li>
+</ul>
+<h3 id="14-ForkJoin"><a href="#14-ForkJoin" class="headerlink" title="14:ForkJoin"></a>14:ForkJoin</h3><blockquote>
+<blockquote>
+<p>分支合并</p>
+<ul>
+<li>jdk1.7之后出来的</li>
+<li>并行执行任务,提高效率</li>
+<li>跳过</li>
+</ul>
+</blockquote>
+</blockquote>
+<h3 id="15-异步回调"><a href="#15-异步回调" class="headerlink" title="15:异步回调"></a>15:异步回调</h3><h3 id="16-JMM"><a href="#16-JMM" class="headerlink" title="16:JMM"></a>16:JMM</h3><h3 id="17-Volatile可见性及其非原子性验证"><a href="#17-Volatile可见性及其非原子性验证" class="headerlink" title="17:Volatile可见性及其非原子性验证"></a>17:Volatile可见性及其非原子性验证</h3><ul>
+<li><p>保证可见性</p>
+</li>
+<li><p>不保证原子性</p>
+</li>
+<li><p>ACID中就有原子性:不可分割</p>
+</li>
+<li><p>幻读,脏读</p>
+<p><code>atomic包</code></p>
+<h4 id="使用原子类解决原子性问题"><a href="#使用原子类解决原子性问题" class="headerlink" title="使用原子类解决原子性问题"></a>使用原子类解决原子性问题</h4></li>
+</ul>
+<h3 id="指令重排"><a href="#指令重排" class="headerlink" title="指令重排"></a>指令重排</h3><blockquote>
+<p>源代码-&gt;编译器优化的重排,指令并行也可能会重排-&gt;内存系统也会重排–&gt;执行</p>
+<ul>
+<li>处理器进行指令重排的时候,会考虑数据的依赖性</li>
+<li></li>
+</ul>
+</blockquote>
+<p>volatile避免指令重排</p>
+<ul>
+<li>内存屏障.cpu指令,作用:</li>
+<li>1:保证特定的操作的执行顺序</li>
+<li>可以保证某些变量的内存可见性</li>
+</ul>
+<h3 id="DCL懒汉式就使用了volatile"><a href="#DCL懒汉式就使用了volatile" class="headerlink" title="DCL懒汉式就使用了volatile"></a>DCL懒汉式就使用了volatile</h3><ul>
+<li>饿汉式单例–构造器私有</li>
+</ul>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324210652.png" alt="image-20210324210646067" loading="lazy"></p>
+<ul>
+<li>可能浪费内存</li>
+</ul>
+<p>懒汉式</p>
+<ul>
+<li>先构造器私有</li>
+<li>不为空则再为创建</li>
+<li><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211031.png" alt="image-20210324211031110" loading="lazy"></li>
+<li>多线程情况下失败</li>
+<li>如果==null,先上锁</li>
+<li>双重检测锁懒汉式</li>
+<li>lazayman=new lazyman()不是原子性操作</li>
+<li><ul>
+<li>分配内存空间</li>
+<li>执行构造方法,初始化对象</li>
+<li>把对象指向空间</li>
+<li>如果走成132</li>
+<li>其他线程发现空间里有对象,但是实际上未初始化,返回了未初始化的对象</li>
+<li><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211618.png" alt="image-20210324211618757" loading="lazy"></li>
+</ul>
+</li>
+<li><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211142.png" alt="image-20210324211142656" loading="lazy"></li>
+<li>利用反射破坏单例模式</li>
+<li><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211902.png" alt="image-20210324211902466" loading="lazy"></li>
+<li>防止</li>
+<li>给构造器加个锁,如果已经有对象,</li>
+<li><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324211944.png" alt="image-20210324211944040" loading="lazy"></li>
+</ul>
+<h3 id="枚举"><a href="#枚举" class="headerlink" title="枚举:"></a>枚举:</h3><blockquote>
+<p>jdk1.5新增</p>
+<p>本身也是一个class类</p>
+</blockquote>
+<h3 id="CAS"><a href="#CAS" class="headerlink" title="CAS"></a>CAS</h3><blockquote>
+<p>compareAndSwap:比较并交换</p>
+</blockquote>
+<blockquote>
+<p> 如果期望的值达到了,则更新,否则不更新</p>
+</blockquote>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324213529.png" alt="image-20210324213529144" loading="lazy"></p>
+<p>java无法操作内存</p>
+<p>java可以调用C++native</p>
+<p>C++可以操作内存</p>
+<p>java的后门,可以通过这个操作内存</p>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324213831.png" alt="image-20210324213831438" loading="lazy"></p>
+<p>offset:内存偏移</p>
+<p><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324214022.png" alt="image-20210324214022006" loading="lazy"></p>
+<ul>
+<li>内存操作,效率很高</li>
+<li>自旋锁,不停旋转直到成功为止</li>
+<li><img src="https://sheepnote.oss-cn-shenzhen.aliyuncs.com/20201006/20210324214145.png" alt="image-20210324214144352" loading="lazy"></li>
+<li>CAS:ABA问题(狸猫换太子)</li>
+<li><ul>
+<li>比较当前工作内存中的值和主内存的值,如果之歌值是期望的,那么执行操作,如果不是就一直循环</li>
+<li>好处:自带原子性</li>
+<li>缺点 :</li>
+<li>循环会耗时</li>
+<li>一次性只能保证一个共享变量的原子性</li>
+</ul>
+</li>
+<li>UnSafe类</li>
+<li></li>
+</ul>
+<h3 id="ABA问题"><a href="#ABA问题" class="headerlink" title="ABA问题"></a>ABA问题</h3><p>CAS时捣乱线程改过又改回去了</p>
+<ul>
+<li>乐观锁,悲观锁</li>
+</ul>
+<h3 id="原子引用"><a href="#原子引用" class="headerlink" title="原子引用"></a>原子引用</h3><p>TimeUnit.secondes.sleep()来延时</p>
+<p>像SQl插入后版本号提升1</p>
+<p><img src="C:/Users/Lenovo/AppData/Roaming/Typora/typora-user-images/image-20210324220212708.png" alt="image-20210324220212708" loading="lazy"></p>
+<p>原子类型改为原子引用,加上了时间戳</p>
+<p>乐观锁有CAS和版本号两种解决方式</p>
+<p><img src="C:/Users/Lenovo/AppData/Roaming/Typora/typora-user-images/image-20210324220422410.png" alt="image-20210324220422410" loading="lazy"></p>
+<h3 id="此处需要敲代码-还有单例模式这些"><a href="#此处需要敲代码-还有单例模式这些" class="headerlink" title="此处需要敲代码,还有单例模式这些"></a>此处需要敲代码,还有单例模式这些</h3><h3 id="21-对各种锁的理解"><a href="#21-对各种锁的理解" class="headerlink" title="21:对各种锁的理解"></a>21:对各种锁的理解</h3><h4 id="公平锁-非公平锁"><a href="#公平锁-非公平锁" class="headerlink" title="公平锁,非公平锁"></a>公平锁,非公平锁</h4><ul>
+<li>公平锁暖插队,公平锁可以插队</li>
+<li>非公平锁,可以插队(默认都是非公平)</li>
+<li>3s的不等待很多秒的</li>
+<li>Lock =new RestrantLock()</li>
+<li>参数传入True则为公平锁</li>
+</ul>
+<h4 id="可重入锁-递归锁"><a href="#可重入锁-递归锁" class="headerlink" title="可重入锁/递归锁"></a>可重入锁/递归锁</h4><p>Re en trant:Reentrant<br>001</p>
+<p><img src="C:/Users/Lenovo/AppData/Roaming/Typora/typora-user-images/image-20210324220914187.png" alt="image-20210324220914187" loading="lazy"></p>
+</div><div id="reward-container"><span class="hty-icon-button button-glow" id="reward-button" title="打赏" onclick="var qr = document.getElementById(&quot;qr&quot;); qr.style.display = (qr.style.display === &quot;none&quot;) ? &quot;block&quot; : &quot;none&quot;;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-hand-coin-line"></use></svg></span><div id="reward-comment">I'm so cute. Please give me money.</div><div id="qr" style="display:none;"><div style="display:inline-block"><a href="/images/money.jpg"><img loading="lazy" src="/images/money.jpg" alt="微信支付" title="微信支付"></a><div><span style="color:#2DC100"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-wechat-pay-line"></use></svg></span></div></div></div></div></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/2022/02/11/%E6%8E%A5%E5%8F%A3%E5%92%8C%E6%8A%BD%E8%B1%A1%E7%B1%BB/" rel="prev" title="接口和抽象类区别"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">接口和抽象类区别</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/2021/03/19/%E6%9F%A5%E5%B1%B1%E6%AD%A3/" rel="next" title="查山正微信小程序"><span class="post-nav-text">查山正微信小程序</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div><div id="comment"><div class="comment-tooltip text-center"><span>欢迎来踩一踩</span><br><a class="hty-button hty-button--raised" id="github-issues" target="_blank" rel="noopener" href="https://github.com/YunYouJun/yunyoujun.github.io/issues?q=is:issue+JUC并发学习笔记">GitHub Issues</a></div><div id="valine-container"></div><script src="https://cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script><script>function initValine() {
+  const valineConfig = {"enable":true,"appId":"K8sNkb431hIYsYIJt5cY5ej8-gzGzoHsz","appKey":"lDlaLdG4bnwWtiHoTg9hxfR8","placeholder":"朕曰","avatar":null,"pageSize":10,"visitor":false,"highlight":true,"recordIP":false,"enableQQ":true,"meta":["nick","mail","link"],"el":"#valine-container","lang":"zh-cn"}
+  valineConfig.path = window.location.pathname
+  new Valine(valineConfig)
+}
+setTimeout(initValine, 800)</script></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2019 – 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> 包子君</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.2.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.2.0</span></div><div class="live_time"><span>本博客已萌萌哒地运行</span><span id="display_live_time"></span><span class="moe-text">(●'◡'●)</span><script>function blog_live_time() {
+  window.setTimeout(blog_live_time, 1000);
+  const start = new Date('2020-10-12T00:00:00');
+  const now = new Date();
+  const timeDiff = (now.getTime() - start.getTime());
+  const msPerMinute = 60 * 1000;
+  const msPerHour = 60 * msPerMinute;
+  const msPerDay = 24 * msPerHour;
+  const passDay = Math.floor(timeDiff / msPerDay);
+  const passHour = Math.floor((timeDiff % msPerDay) / 60 / 60 / 1000);
+  const passMinute = Math.floor((timeDiff % msPerHour) / 60 / 1000);
+  const passSecond = Math.floor((timeDiff % msPerMinute) / 1000);
+  display_live_time.innerHTML = " " + passDay + " 天 " + passHour + " 小时 " + passMinute + " 分 " + passSecond + " 秒";
+}
+blog_live_time();
+</script></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" target="_blank" rel="noopener" href="https://www.google.com/search?q=site:darksheep.xyz" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a></div><script defer src="/js/utils.js"></script><script defer src="/js/hexo-theme-yun.js"></script></body></html>

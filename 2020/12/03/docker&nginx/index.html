@@ -1,0 +1,159 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="包子君"><meta name="copyright" content="包子君"><meta name="generator" content="Hexo 5.2.0"><meta name="theme" content="hexo-theme-yun"><title>Docker初窥+nginx | 包子君的小站</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="/favicon.ico"><link rel="mask-icon" href="/favicon.ico" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="/css/hexo-theme-yun.css"><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"sfafreshman.github.io","root":"/","title":"包子君的小站","version":"1.2.0","mode":"dark","copycode":true,"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"https://v1.hitokoto.cn","hitokoto":true},"fireworks":{"colors":["102, 167, 221","62, 131, 225","33, 78, 194"]}};
+  </script><meta name="description" content="本学期第十四周：  阮一峰：Docker入门教程 Docker初窥+nginx需求：软件运行需要环境配置。换一台机器就要重新配置 希望：软件可以带环境安装：安装时把运行所需环境复制过来 已有解决方案：虚拟机，Linux容器  虚拟机：独占一部分内存和硬盘空间，运行时其他程序不能使用   资源占用多：哪怕应用程序真正使用只有1mb，虚拟机也需要几百mb才能运行 多余步骤多：虚拟机是完整操作系统，无">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Docker初窥+nginx">
+<meta property="og:url" content="https://sfafreshman.github.io/2020/12/03/docker&nginx/index.html">
+<meta property="og:site_name" content="包子君的小站">
+<meta property="og:description" content="本学期第十四周：  阮一峰：Docker入门教程 Docker初窥+nginx需求：软件运行需要环境配置。换一台机器就要重新配置 希望：软件可以带环境安装：安装时把运行所需环境复制过来 已有解决方案：虚拟机，Linux容器  虚拟机：独占一部分内存和硬盘空间，运行时其他程序不能使用   资源占用多：哪怕应用程序真正使用只有1mb，虚拟机也需要几百mb才能运行 多余步骤多：虚拟机是完整操作系统，无">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-12-03T15:20:18.000Z">
+<meta property="article:modified_time" content="2021-04-29T17:37:28.845Z">
+<meta property="article:author" content="包子君">
+<meta property="article:tag" content="拜读">
+<meta name="twitter:card" content="summary"><script src="/js/ui/mode.js"></script></head><body><script defer src="https://cdn.jsdelivr.net/npm/animejs@latest/anime.min.js"></script><script defer src="/js/ui/fireworks.js"></script><canvas class="fireworks"></canvas><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="包子君"><img width="96" loading="lazy" src="/images/logo.png" alt="包子君"><span class="site-author-status" title="不想上学">😭</span></a><div class="site-author-name"><a href="/about/">包子君</a></div><a class="site-name" href="/about/site.html">包子君的小站</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">13</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">7</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">13</span></a></div><a class="site-state-item hty-icon-button" href="https://sfafreshman.github.io/categories/%E5%88%86%E4%BA%AB/" title="拜读"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="mailto:sfa_freshman@qq.com" title="E-Mail" target="_blank" style="color:#8E71C1"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-mail-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="/images/qrcode.jpg" title="微信" target="_blank" style="color:#1AAD19"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-wechat-2-line"></use></svg></a></div><hr style="margin:0.5rem 1rem"><div class="links"><a class="links-item hty-icon-button" href="/links/" title="我的小伙伴们" style="color:dodgerblue"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-genderless-line"></use></svg></a></div></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Docker%E5%88%9D%E7%AA%A5-nginx"><span class="toc-number">1.</span> <span class="toc-text">Docker初窥+nginx</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%9C%80%E6%B1%82%EF%BC%9A"><span class="toc-number">1.0.1.</span> <span class="toc-text">需求：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Docker%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">1.1.</span> <span class="toc-text">Docker是什么</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%94%A8%E9%80%94"><span class="toc-number">1.1.1.</span> <span class="toc-text">用途</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%8E%E4%B9%88%E7%94%A8"><span class="toc-number">1.2.</span> <span class="toc-text">怎么用</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%89%E8%A3%85"><span class="toc-number">1.2.1.</span> <span class="toc-text">安装</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Q-amp-A"><span class="toc-number">1.2.2.</span> <span class="toc-text">Q&amp;A</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%AE%89%E8%A3%85%E6%88%90%E5%8A%9F%E5%90%8E"><span class="toc-number">1.2.2.1.</span> <span class="toc-text">安装成功后</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#image%E6%96%87%E4%BB%B6"><span class="toc-number">1.2.3.</span> <span class="toc-text">image文件</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E6%93%8D%EF%BC%9A"><span class="toc-number">1.3.</span> <span class="toc-text">实操：</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BE%85%E7%BB%AD"><span class="toc-number">1.4.</span> <span class="toc-text">待续</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Docker%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%95%99%E7%A8%8B%EF%BC%9A%E6%9E%B6%E8%AE%BEwordpress%E7%BD%91%E7%AB%99"><span class="toc-number">1.5.</span> <span class="toc-text">Docker微服务教程：架设wordpress网站</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Nginx-docker%E5%AE%B9%E5%99%A8%E6%95%99%E7%A8%8B"><span class="toc-number"></span> <span class="toc-text">Nginx docker容器教程</span></a></div></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="https://sfafreshman.github.io/2020/12/03/docker&amp;nginx/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="包子君"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="包子君的小站"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">Docker初窥+nginx</h1><div class="post-meta"><div class="post-time" style="display:inline-block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <time title="创建时间：2020-12-03 15:20:18" itemprop="dateCreated datePublished" datetime="2020-12-03T15:20:18+00:00">2020-12-03</time><span class="post-meta-divider">-</span><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-2-line"></use></svg></span> <time title="修改时间：2021-04-29 17:37:28" itemprop="dateModified" datetime="2021-04-29T17:37:28+00:00">2021-04-29</time></div><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/%E5%88%86%E4%BA%AB/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">分享</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/%E6%8B%9C%E8%AF%BB/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">拜读</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><blockquote>
+<p>本学期第十四周：</p>
+</blockquote>
+<p><a target="_blank" rel="noopener" href="http://www.ruanyifeng.com/blog/2018/02/docker-tutorial.html">阮一峰：Docker入门教程</a></p>
+<h2 id="Docker初窥-nginx"><a href="#Docker初窥-nginx" class="headerlink" title="Docker初窥+nginx"></a>Docker初窥+nginx</h2><h4 id="需求："><a href="#需求：" class="headerlink" title="需求："></a>需求：</h4><p><code>软件运行需要环境配置。换一台机器就要重新配置</code></p>
+<p><strong>希望</strong>：<strong>软件可以带环境安装：安装时把运行所需环境复制过来</strong></p>
+<p>已有解决方案：虚拟机，Linux容器</p>
+<ul>
+<li><p>虚拟机：独占一部分内存和硬盘空间，运行时其他程序不能使用</p>
+</li>
+<li><ul>
+<li><strong>资源占用多</strong>：哪怕应用程序真正使用只有1mb，虚拟机也需要几百mb才能运行</li>
+<li><strong>多余步骤多</strong>：虚拟机是完整操作系统，无法跳过用户登录等“系统级别操作步骤”</li>
+<li><strong>启动慢</strong>：启动速度等于操作系统</li>
+</ul>
+</li>
+<li><p>Linux容器</p>
+</li>
+<li><ul>
+<li><p><strong>不模拟完整操作系统，而是对进程进行隔离</strong></p>
+</li>
+<li><blockquote>
+<p>或者说，在正常进程的外面套了一个<a target="_blank" rel="noopener" href="https://opensource.com/article/18/1/history-low-level-container-runtimes">保护层</a>。对于容器里面的进程来说，它接触到的各种资源都是虚拟的，从而实现与底层系统的隔离。</p>
+<p>由于容器是进程级别的，相比虚拟机有很多优势。</p>
+</blockquote>
+</li>
+<li><p><strong>启动快</strong>：启动进程而不是启动操作系统</p>
+</li>
+<li><p><strong>资源占用少</strong>：只占用需要的资源，多个容器可以共享资源，不想虚拟机要独享</p>
+</li>
+<li><p><strong>体积小</strong>：只包含用到的组件即可，不需要打包整个操作系统</p>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Docker是什么"><a href="#Docker是什么" class="headerlink" title="Docker是什么"></a>Docker是什么</h3><blockquote>
+<p><strong>Linux容器的一种封装，提供简单易用的容器使用接口，当前最流行的方案</strong></p>
+</blockquote>
+<ul>
+<li>可以方便的创建和使用容器，把软件放入容器</li>
+<li>容器可以进行版本管理，复制，分享，修改</li>
+</ul>
+<h4 id="用途"><a href="#用途" class="headerlink" title="用途"></a>用途</h4><ul>
+<li><strong>提供一次性环境</strong>：如测试</li>
+<li><strong>提供弹性的云服务</strong>：Docker容器可以随开随关，适合动态扩容和缩容</li>
+<li><strong>组建微服务架构</strong>：一个机器可以通过多个容器跑多个服务，在本机就可以模拟出微服务架构</li>
+</ul>
+<h3 id="怎么用"><a href="#怎么用" class="headerlink" title="怎么用"></a>怎么用</h3><h4 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h4><blockquote>
+<p>有社区版和企业版，个人开发者社区版够用</p>
+<p>Windows，ubuntu，mac等都有</p>
+</blockquote>
+<h4 id="Q-amp-A"><a href="#Q-amp-A" class="headerlink" title="Q&amp;A"></a>Q&amp;A</h4><p>Q:</p>
+<blockquote>
+<p> Q:不同操作系统上Docker是否有区别，linux上的Docker容器是否可以跑在linux上</p>
+</blockquote>
+<p>A:</p>
+<blockquote>
+<p>A:未知</p>
+<p>由下文有Ubuntu镜像+apahce</p>
+<p>容器内镜像类似小型虚拟机？与容器外操作系统无关？</p>
+</blockquote>
+<h5 id="安装成功后"><a href="#安装成功后" class="headerlink" title="安装成功后"></a>安装成功后</h5><ul>
+<li>运行命令验证</li>
+</ul>
+<pre class="language-bash" data-language="bash"><code class="language-bash">$ docker version
+<span class="token comment"># 或者</span>
+$ docker inf</code></pre>
+
+<ul>
+<li>docker需要用户有sudo权限，避免每次输入sudo，可以把用户加入docke用户组</li>
+</ul>
+<pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token function">sudo</span> <span class="token function">usermod</span> -aG docker <span class="token environment constant">$USER</span></code></pre>
+
+<ul>
+<li>Docker 是服务器—-客户端架构。命令行运行<code>docker</code>命令的时候，需要本机有 Docker 服务。如果服务没有启动，可以用下面的命令启动</li>
+</ul>
+<pre class="language-bash" data-language="bash"><code class="language-bash"><span class="token comment"># service 命令的用法</span>
+$ <span class="token function">sudo</span> <span class="token function">service</span> docker start
+
+<span class="token comment"># systemctl 命令的用法</span>
+$ <span class="token function">sudo</span> systemctl start docker</code></pre>
+
+<h4 id="image文件"><a href="#image文件" class="headerlink" title="image文件"></a>image文件</h4><p><strong>应用程序及其依赖，打包在 image 文件里面</strong></p>
+<ul>
+<li><p>通过这个文件，才能生成 Docker 容器</p>
+</li>
+<li><p>可以看作是容器的模板</p>
+</li>
+<li><p>实际开发中，<strong>一个 image 文件往往通过继承另一个 image 文件，加上一些个性化设置而生成</strong>。</p>
+<blockquote>
+<p>你可以在 Ubuntu 的 image 基础上，往里面加入 Apache 服务器，形成你的 image。</p>
+</blockquote>
+<p>Q：</p>
+<blockquote>
+<p> Ubuntu 的 image不也是一个操作系统？</p>
+</blockquote>
+</li>
+<li><p>尽量使用别人制作好的，或者基于别人的加工</p>
+</li>
+</ul>
+<blockquote>
+<p>一般来说，为了节省时间，我们应该尽量使用别人制作好的 image 文件，而不是自己制作。即使要定制，也应该基于别人的 image 文件进行加工，而不是从零开始制作。</p>
+</blockquote>
+<hr>
+<h3 id="实操："><a href="#实操：" class="headerlink" title="实操："></a>实操：</h3><ul>
+<li>下载一个镜像并运行</li>
+<li>停止程序</li>
+<li>停止服务型容器</li>
+<li>终止和删除容器文件</li>
+<li>制作自己的docker容器？镜像</li>
+<li>其他有用的命令</li>
+</ul>
+<h3 id="待续"><a href="#待续" class="headerlink" title="待续"></a>待续</h3><h3 id="Docker微服务教程：架设wordpress网站"><a href="#Docker微服务教程：架设wordpress网站" class="headerlink" title="Docker微服务教程：架设wordpress网站"></a><a target="_blank" rel="noopener" href="http://www.ruanyifeng.com/blog/2018/02/docker-wordpress-tutorial.html">Docker微服务教程：架设wordpress网站</a></h3><blockquote>
+<ul>
+<li>方法 A：自建 WordPress 容器</li>
+<li>方法 B：采用官方的 WordPress 容器</li>
+<li>方法 C：采用 Docker Compose 工具</li>
+</ul>
+</blockquote>
+<h1 id="Nginx-docker容器教程"><a href="#Nginx-docker容器教程" class="headerlink" title="Nginx docker容器教程"></a><a target="_blank" rel="noopener" href="http://www.ruanyifeng.com/blog/2018/02/nginx-docker.html">Nginx docker容器教程</a></h1></div><div id="reward-container"><span class="hty-icon-button button-glow" id="reward-button" title="打赏" onclick="var qr = document.getElementById(&quot;qr&quot;); qr.style.display = (qr.style.display === &quot;none&quot;) ? &quot;block&quot; : &quot;none&quot;;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-hand-coin-line"></use></svg></span><div id="reward-comment">I'm so cute. Please give me money.</div><div id="qr" style="display:none;"><div style="display:inline-block"><a href="/images/money.jpg"><img loading="lazy" src="/images/money.jpg" alt="微信支付" title="微信支付"></a><div><span style="color:#2DC100"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-wechat-pay-line"></use></svg></span></div></div></div></div></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/2020/12/03/MVC,MVP%E5%92%8CMMM%E7%9A%84%E5%9B%BE%E7%A4%BA/" rel="prev" title="转载：MVC，MVP 和 MVVM 的图示"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">转载：MVC，MVP 和 MVVM 的图示</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/2020/12/03/webSocket%E5%88%9D%E7%AA%A5/" rel="next" title="webSocket初探"><span class="post-nav-text">webSocket初探</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div><div id="comment"><div class="comment-tooltip text-center"><span>欢迎来踩一踩</span><br><a class="hty-button hty-button--raised" id="github-issues" target="_blank" rel="noopener" href="https://github.com/YunYouJun/yunyoujun.github.io/issues?q=is:issue+Docker初窥+nginx">GitHub Issues</a></div><div id="valine-container"></div><script src="https://cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script><script>function initValine() {
+  const valineConfig = {"enable":true,"appId":"K8sNkb431hIYsYIJt5cY5ej8-gzGzoHsz","appKey":"lDlaLdG4bnwWtiHoTg9hxfR8","placeholder":"朕曰","avatar":null,"pageSize":10,"visitor":false,"highlight":true,"recordIP":false,"enableQQ":true,"meta":["nick","mail","link"],"el":"#valine-container","lang":"zh-cn"}
+  valineConfig.path = window.location.pathname
+  new Valine(valineConfig)
+}
+setTimeout(initValine, 800)</script></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2019 – 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> 包子君</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.2.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.2.0</span></div><div class="live_time"><span>本博客已萌萌哒地运行</span><span id="display_live_time"></span><span class="moe-text">(●'◡'●)</span><script>function blog_live_time() {
+  window.setTimeout(blog_live_time, 1000);
+  const start = new Date('2020-10-12T00:00:00');
+  const now = new Date();
+  const timeDiff = (now.getTime() - start.getTime());
+  const msPerMinute = 60 * 1000;
+  const msPerHour = 60 * msPerMinute;
+  const msPerDay = 24 * msPerHour;
+  const passDay = Math.floor(timeDiff / msPerDay);
+  const passHour = Math.floor((timeDiff % msPerDay) / 60 / 60 / 1000);
+  const passMinute = Math.floor((timeDiff % msPerHour) / 60 / 1000);
+  const passSecond = Math.floor((timeDiff % msPerMinute) / 1000);
+  display_live_time.innerHTML = " " + passDay + " 天 " + passHour + " 小时 " + passMinute + " 分 " + passSecond + " 秒";
+}
+blog_live_time();
+</script></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" target="_blank" rel="noopener" href="https://www.google.com/search?q=site:darksheep.xyz" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a></div><script defer src="/js/utils.js"></script><script defer src="/js/hexo-theme-yun.js"></script></body></html>
